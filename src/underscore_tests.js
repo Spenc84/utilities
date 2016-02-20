@@ -30,9 +30,6 @@ var _ = { };
   // Call iterator(value, key, collection) for each element of collection.
   // Accepts both arrays and objects.
   _.each = function(collection, iterator) {
-  /*  collection.forEach(function(value, index, coll){
-      iterator(value, index, coll);
-    }); */
     for(var i in collection) {
       iterator(collection[i], i, collection);
     }
@@ -96,30 +93,68 @@ var _ = { };
   // Calls the method named by methodName on each value in the list.
   _.invoke = function(list, methodName, args) {
     var newList = [];
-    for(var i in list){
-      newList.push(list[i][methodName]());
+    if (typeof methodName === 'string'){
+      for(var i in list){
+        newList.push(list[i][methodName]());
+      }
+    }
+    else {
+      for(var i in list){
+        newList.push(methodName.call(list[i]))
+      }
+      // list.forEach(function(value){
+      //   newList.push(methodName.call(value));
+      // });
     }
     return newList;
   };
+  //* _.each = function(iterator) {
+  //*   for(var i in this) {
+  //*     iterator(args[i], i, this);
+  //*   }
+  //* };
+
 
   // Reduces an array or object to a single value by repetitively calling
   // iterator(previousValue, item) for each item. previousValue should be
   // the return value of the previous iterator call.
   _.reduce = function(collection, iterator, initialValue) {
+    var sum = 0;
+    if(initialValue) sum = initialValue;
+    for(var i in collection){
+      sum = iterator(sum, collection[i]);
+    }
+    return sum;
   };
 
   // Determine if the array or object contains a given value (using `===`).
   _.contains = function(collection, target) {
+    for(var i in collection){
+      if(collection[i] === target) return true;
+    }
+    return false;
   };
 
 
   // Determine whether all of the elements match a truth test.
   _.every = function(collection, iterator) {
+    if(collection.length===0) return true;
+    if(!iterator) return true;
+    for(var i in collection){
+      if(!iterator(collection[i])) return false;
+    }
+    return true;
   };
 
   // Determine whether any of the elements pass a truth test. If no iterator is
   // provided, provide a default one
   _.some = function(collection, iterator) {
+    if(collection.length===0) return false;
+    if(!iterator) iterator=function(x){ return x;};
+    for(var i in collection){
+      if(iterator(collection[i])) return true;
+    }
+    return false;
   };
 
 
@@ -132,12 +167,30 @@ var _ = { };
 
   // Extend a given object with all the properties of the passed in
   // object(s).
+
+  //_.extend = function(obj) {
+  //};
   _.extend = function(obj) {
+    if(arguments.length < 2) return obj;
+    for(var i = 1; i < arguments.length; i++){
+      for(var x in arguments[i]){
+        obj[x] = arguments[i][x];
+      }
+    }
+    return obj;
   };
 
   // Like extend, but doesn't ever overwrite a key that already
   // exists in obj
   _.defaults = function(obj) {
+    if(arguments.length < 2) return obj;
+    for(var i = 1; i < arguments.length; i++){
+      for(var x in arguments[i]){
+        if(!obj.hasOwnProperty(x))
+          obj[x] = arguments[i][x];
+      }
+    }
+    return obj;
   };
 
 
@@ -149,6 +202,12 @@ var _ = { };
   // Return a function that can be called at most one time. Subsequent calls
   // should return the previously returned value.
   _.once = function(func) {
+    var flag = true;
+    var value = null;
+    return function(){
+      if(flag) value = func();
+      flag = false;
+      return value;};
   };
 
   // Memoize an expensive function by storing its results. You may assume
@@ -158,6 +217,12 @@ var _ = { };
   // already computed the result for the given argument and return that value
   // instead if possible.
   _.memoize = function(func) {
+    var values = {};
+    return function(x){
+      if(values.hasOwnProperty(x)) return values[x];
+      values[x] = func(x);
+      return values[x];
+    };
   };
 
   // Delays a function for the given number of milliseconds, and then calls
@@ -167,19 +232,60 @@ var _ = { };
   // parameter. For example _.delay(someFunction, 500, 'a', 'b') will
   // call someFunction('a', 'b') after 500ms
   _.delay = function(func, wait) {
+    var args = [];
+    for(var i =2; i<arguments.length; i++){
+      args.push(arguments[i]);
+    }
+    window.setTimeout(
+      function(){ func.apply(this, args) },
+      wait);
   };
 
 
 
   // Shuffle an array.
   _.shuffle = function(array) {
+    var length = array.length;
+    var newArr = [];
+    var rand = 0;
+    for(var i = 0; i<length; i++){
+      rand = Math.floor(Math.random() * array.length);
+      newArr.push(array.splice(rand, 1));
+    }
+    return newArr;
   };
 
-  // Sort the object's values by a criterion produced by an iterator.
-  // If iterator is a string, sort objects by that property with the name
+  // Sort an array of objects by a criterion produced by an iterator.
+  // If iterator is a string, sort objects by their property that matches the name
   // of that string. For example, _.sortBy(people, 'name') should sort
-  // an array of people by their name.
+  // an array of people objects by their name property.
   _.sortBy = function(collection, iterator) {
+    var array = collection.slice();
+    var newArr = [];
+    var smallest;
+    var smallIdx;
+    var length = array.length;
+    for(var i = 0; i < length; i++){
+      smallest = array[0]
+      smallIdx = 0;
+      for(var j = 1; j < array.length; j++){
+        if(typeof iterator === 'function') {
+          if(iterator(array[j]) < iterator(smallest) || !smallest){
+            smallIdx = j;
+            smallest = array[j];
+          }
+        }
+        else {
+          if(array[j][iterator] < smallest[iterator] || !smallest){
+            smallIdx = j;
+            smallest = array[j];
+          }
+        }
+      }
+      newArr.push(smallest);
+      array.splice(smallIdx, 1);
+    }
+    return newArr;
   };
 
   // Zip together two or more arrays with elements of the same index
@@ -188,21 +294,75 @@ var _ = { };
   // Example:
   // _.zip(['a','b','c','d'], [1,2,3]) returns [['a',1], ['b',2], ['c',3], ['d',undefined]]
   _.zip = function() {
+    var outerArray = [];
+    var innerArray = [];
+    var length = 0;
+    for(var i = 0; i < arguments.length; i++){
+      if(arguments[i].length > length) {
+        length = arguments[i].length;
+      }
+    }
+    for(var j = 0; j < length; j++){
+      innerArray = [];
+      for(var k = 0; k < arguments.length; k++){
+        innerArray.push(arguments[k][j]);
+      }
+      outerArray.push(innerArray);
+    }
+    return outerArray;
   };
 
   // Takes a multidimensional array and converts it to a one-dimensional array.
   // The new array should contain all elements of the multidimensional array.
   _.flatten = function(nestedArray, result) {
+    var newArray = [];
+    function getValues(x){
+      if(typeof x === 'object'){
+        getValues(x[0]);
+        if(x.length > 1){
+          getValues(x.slice(1));
+        }
+      }
+      else {
+        newArray.push(x);
+      }
+    }
+    getValues(nestedArray);
+    return newArray;
   };
 
   // Takes an arbitrary number of arrays and produces an array that contains
   // every item shared between all the passed-in arrays.
   _.intersection = function() {
+    var subject = arguments[0];
+    var newArr = [];
+    for(var x in subject){
+      var flag = true;
+      for(var i = 1; i < arguments.length; i++){
+        if(!arguments[i].includes(subject[x])){
+          flag = false;
+        }
+      }
+      if(flag) newArr.push(subject[x])
+    }
+    return newArr;
   };
 
   // Take the difference between one array and a number of other arrays.
   // Only the elements present in just the first array will remain.
   _.difference = function(array) {
+    var subject = arguments[0];
+    var newArr = [];
+    for(var x in subject){
+      var flag = true;
+      for(var i = 1; i < arguments.length; i++){
+        if(arguments[i].includes(subject[x])){
+          flag = false;
+        }
+      }
+      if(flag) newArr.push(subject[x])
+    }
+    return newArr;
   };
 
 }).call(this);

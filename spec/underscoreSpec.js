@@ -394,7 +394,7 @@ describe("memoize", function() {
     var fib = function(n) {
       return n < 2 ? n : fib(n - 1) + fib(n - 2);
     };
-    expect(fib(10)).to.equal(55);
+    expect(_.memoize(fib)(10)).to.equal(55);
 
     var fastFib = _.memoize(fib);
     expect(fastFib(10)).to.equal(55);
